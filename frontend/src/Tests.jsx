@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { EXERCISES } from "./exercises.js";
 import { CATEGORIES, TEST_TYPES, getType, summarize, fieldDisplay } from "./testTypes.js";
-import { getTests, saveTest, deleteTest } from "./tests.js";
+import { getTests, saveTest, deleteTest } from "./testStorage.js";
 import { formatDate, todayLocal } from "./plans.js";
+import TestsMotor from "./TestsMotor.jsx";
 
 function ScaleInput({ field, value, onChange }) {
   const id = `scale-${field.key}`;
@@ -27,6 +28,50 @@ function ScaleInput({ field, value, onChange }) {
   );
 }
 
+function FieldInput({ field, value, onChange }) {
+  const id = `f-${field.key}`;
+  if (field.type === "exercise") {
+    return (
+      <select id={id} className="selectbox" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Wybierz ćwiczenie</option>
+        {EXERCISES.map((g) => (
+          <optgroup key={g.group} label={g.group}>
+            {g.items.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    );
+  }
+  if (field.type === "choice") {
+    return (
+      <select id={id} className="selectbox" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Wybierz</option>
+        {field.options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    );
+  }
+  if (field.type === "textarea") {
+    return <textarea id={id} rows={3} value={value} onChange={(e) => onChange(e.target.value)} />;
+  }
+  const isNumber = field.type === "number";
+  return (
+    <input
+      id={id}
+      type={isNumber ? "number" : "text"}
+      min={isNumber ? field.min : undefined}
+      max={isNumber ? field.max : undefined}
+      step={isNumber ? field.step ?? "any" : undefined}
+      inputMode={isNumber ? "decimal" : undefined}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
 function TestForm({ type, onSave, onBack }) {
   const [values, setValues] = useState(() =>
     Object.fromEntries(type.fields.map((f) => [f.key, f.default ?? ""]))
@@ -43,11 +88,19 @@ function TestForm({ type, onSave, onBack }) {
     setError("");
     const missing = type.fields.find((f) => f.required && isEmpty(values[f.key]));
     if (missing) return setError(`Uzupełnij pole: ${missing.label}.`);
-    const bad = type.fields.find(
-      (f) => f.type === "number" && !isEmpty(values[f.key]) && !(parseFloat(String(values[f.key]).replace(",", ".")) >= 0)
-    );
-    if (bad) return setError(`Wpisz poprawną liczbę w polu: ${bad.label}.`);
-    const hasResult = type.fields.some((f) => (f.type === "number" || f.type === "scale") && !isEmpty(values[f.key]));
+
+    const bad = type.fields.find((f) => {
+      if (f.type !== "number" || isEmpty(values[f.key])) return false;
+      const x = parseFloat(String(values[f.key]).replace(",", "."));
+      return !(x >= (f.min ?? 0)) || (f.max !== undefined && x > f.max);
+    });
+    if (bad) {
+      const range = bad.max !== undefined ? ` (zakres ${bad.min ?? 0}–${bad.max})` : "";
+      return setError(`Wpisz poprawną liczbę w polu: ${bad.label}${range}.`);
+    }
+
+    // Wynik to pole inne niż opisowe, zmienione względem wartości domyślnej.
+    const hasResult = type.fields.some((f) => !f.meta && !isEmpty(values[f.key]) && values[f.key] !== (f.default ?? ""));
     if (!hasResult) return setError("Wpisz przynajmniej jeden wynik.");
     if (!date) return setError("Podaj datę testu.");
     try {
@@ -71,30 +124,9 @@ function TestForm({ type, onSave, onBack }) {
             f.type === "scale" ? (
               <ScaleInput key={f.key} field={f} value={values[f.key]} onChange={set(f.key)} />
             ) : (
-              <div key={f.key}>
+              <div key={f.key} className={f.type === "textarea" ? "fullrow" : undefined}>
                 <label htmlFor={`f-${f.key}`}>{f.label}{f.unit ? ` (${f.unit})` : ""}</label>
-                {f.type === "exercise" ? (
-                  <select id={`f-${f.key}`} className="selectbox" value={values[f.key]} onChange={(e) => set(f.key)(e.target.value)}>
-                    <option value="">Wybierz ćwiczenie</option>
-                    {EXERCISES.map((g) => (
-                      <optgroup key={g.group} label={g.group}>
-                        {g.items.map((name) => (
-                          <option key={name} value={name}>{name}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id={`f-${f.key}`}
-                    type={f.type === "number" ? "number" : "text"}
-                    min={f.min}
-                    step={f.type === "number" ? f.step ?? "any" : undefined}
-                    inputMode={f.type === "number" ? "decimal" : undefined}
-                    value={values[f.key]}
-                    onChange={(e) => set(f.key)(e.target.value)}
-                  />
-                )}
+                <FieldInput field={f} value={values[f.key]} onChange={set(f.key)} />
               </div>
             )
           )}
@@ -120,7 +152,7 @@ function TestForm({ type, onSave, onBack }) {
   );
 }
 
-export default function Tests({ user }) {
+function TestsOther({ user, tabs }) {
   const [results, setResults] = useState(() => getTests(user.email));
   const [mode, setMode] = useState("list"); // "list" | "choose" | "form"
   const [typeId, setTypeId] = useState(null);
@@ -182,10 +214,13 @@ export default function Tests({ user }) {
     .filter((r) => !filter || r.typeId === filter)
     .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
 
+  const hasValue = (r, f) => r.values[f.key] !== undefined && String(r.values[f.key]).trim() !== "";
+
   return (
     <section>
+      {tabs}
       <div className="pagehead">
-        <h2>Testy</h2>
+        <h2>Pozostałe testy</h2>
         <button className="btn small" onClick={() => setMode("choose")}>Nowy test</button>
       </div>
 
@@ -197,8 +232,12 @@ export default function Tests({ user }) {
             <label htmlFor="testFilter">Pokaż</label>
             <select id="testFilter" className="selectbox" value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="">Wszystkie testy</option>
-              {TEST_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+              {CATEGORIES.map((cat) => (
+                <optgroup key={cat} label={cat}>
+                  {TEST_TYPES.filter((t) => t.category === cat).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -221,14 +260,21 @@ export default function Tests({ user }) {
                   {summary && <p className="summary">{summary}</p>}
                   <div>
                     {type.fields
-                      .filter((f) => r.values[f.key] !== undefined && String(r.values[f.key]).trim() !== "")
+                      .filter((f) => f.type !== "textarea" && hasValue(r, f))
                       .map((f) => (
                         <span className="setchip" key={f.key}>
                           {f.label}: {fieldDisplay(f, r.values[f.key])}
                         </span>
                       ))}
                   </div>
-                  {r.note && <p className="resultnote">{r.note}</p>}
+                  {type.fields
+                    .filter((f) => f.type === "textarea" && hasValue(r, f))
+                    .map((f) => (
+                      <p className="resultnote" key={f.key}>
+                        <strong>{f.label}:</strong> {r.values[f.key]}
+                      </p>
+                    ))}
+                  {r.note && <p className="resultnote">Notatka: {r.note}</p>}
                 </li>
               );
             })}
@@ -237,4 +283,21 @@ export default function Tests({ user }) {
       )}
     </section>
   );
+}
+
+export default function Tests({ user }) {
+  const [section, setSection] = useState("motor");
+
+  const tabs = (
+    <div className="tabs sectiontabs" role="tablist">
+      <button className="tab" role="tab" aria-selected={section === "motor"} onClick={() => setSection("motor")}>
+        Motoryczne
+      </button>
+      <button className="tab" role="tab" aria-selected={section === "other"} onClick={() => setSection("other")}>
+        Pozostałe
+      </button>
+    </div>
+  );
+
+  return section === "motor" ? <TestsMotor user={user} tabs={tabs} /> : <TestsOther user={user} tabs={tabs} />;
 }

@@ -10,7 +10,7 @@ export default function Dashboard({ user, onNavigate }) {
         </button>
         <button className="tile" onClick={() => onNavigate("tests")}>
           <strong>Testy</strong>
-          <span>Czas reakcji, maksy siłowe, wydolność judo i testy psychologiczne.</span>
+          <span>Tabela testów motorycznych oraz badania, skład ciała, biomechanika i psychologia.</span>
         </button>
         <div className="tile off"><strong>Dziennik walk i techniki</strong><span>Wkrótce</span></div>
         <div className="tile off"><strong>Waga i regeneracja</strong><span>Wkrótce</span></div>
