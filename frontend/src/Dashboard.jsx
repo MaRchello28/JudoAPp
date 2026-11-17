@@ -14,7 +14,10 @@ export default function Dashboard({ user, onNavigate }) {
         </button>
         <div className="tile off"><strong>Dziennik walk i techniki</strong><span>Wkrótce</span></div>
         <div className="tile off"><strong>Waga i regeneracja</strong><span>Wkrótce</span></div>
-        <div className="tile off"><strong>Kalendarz zawodów</strong><span>Wkrótce</span></div>
+        <button className="tile" onClick={() => onNavigate("calendar")}>
+          <strong>Kalendarz</strong>
+          <span>Zawody, które Cię interesują, i plan aktywności na każdy dzień.</span>
+        </button>
       </div>
     </section>
   );

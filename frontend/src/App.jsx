@@ -3,6 +3,7 @@ import Login from "./Login.jsx";
 import Dashboard from "./Dashboard.jsx";
 import Motor from "./Motor.jsx";
 import Tests from "./Tests.jsx";
+import Calendar from "./Calendar.jsx";
 import { getSession, logout } from "./auth.js";
 
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
           {nav("home", "Panel")}
           {nav("motor", "Trening motoryczny")}
           {nav("tests", "Testy")}
+          {nav("calendar", "Kalendarz")}
         </nav>
         <div className="who">
           <span>{user.firstName} {user.lastName}</span>
@@ -54,6 +56,7 @@ export default function App() {
         {view === "home" && <Dashboard user={user} onNavigate={setView} />}
         {view === "motor" && <Motor user={user} />}
         {view === "tests" && <Tests user={user} />}
+        {view === "calendar" && <Calendar user={user} />}
       </main>
     </div>
   );
