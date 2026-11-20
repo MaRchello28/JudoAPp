@@ -1,5 +1,4 @@
 import { Fragment, useState } from "react";
-import { EXERCISES } from "./exercises.js";
 import {
   MAX_SERIES,
   MAX_EXERCISES,
@@ -7,15 +6,16 @@ import {
   rowTonnage,
   planTonnage,
   formatKg,
-  savePlan,
 } from "./plans.js";
+import { savePlan } from "./plansApi.js";
 
 const DAYS = ["niedziela", "poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota"];
 const filled = (s) => s.reps !== "" || s.weight !== "";
 
-export default function PlanEditor({ user, initial, onBack, onCopy }) {
+export default function PlanEditor({ initial, exercises, onBack, onCopy }) {
   const [plan, setPlan] = useState(initial);
   const [status, setStatus] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const update = (patch) => {
     setPlan((p) => ({ ...p, ...patch }));
@@ -65,13 +65,17 @@ export default function PlanEditor({ user, initial, onBack, onCopy }) {
     update({ rows: plan.rows.slice(0, -1) });
   }
 
-  function handleSave() {
+  async function handleSave() {
+    setSaving(true);
+    setStatus("");
     try {
       const name = plan.name.trim() || `Plan z ${plan.date}`;
-      setPlan(savePlan(user.email, { ...plan, name }));
+      setPlan(await savePlan({ ...plan, name }, exercises.idByName));
       setStatus("Plan zapisany.");
     } catch (err) {
       setStatus(err.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -128,7 +132,7 @@ export default function PlanEditor({ user, initial, onBack, onCopy }) {
                     aria-label={`Ćwiczenie ${r + 1}`}
                   >
                     <option value="">Wybierz ćwiczenie</option>
-                    {EXERCISES.map((g) => (
+                    {exercises.groups.map((g) => (
                       <optgroup key={g.group} label={g.group}>
                         {g.items.map((name) => (
                           <option key={name} value={name}>{name}</option>
@@ -184,7 +188,7 @@ export default function PlanEditor({ user, initial, onBack, onCopy }) {
       </div>
 
       <div className="toolbar">
-        <button className="btn small" onClick={handleSave}>Zapisz plan</button>
+        <button className="btn small" onClick={handleSave} disabled={saving}>{saving ? "Zapisuję…" : "Zapisz plan"}</button>
         {plan.id && (
           <button className="btn ghost small" onClick={() => onCopy(plan)}>Skopiuj plan</button>
         )}

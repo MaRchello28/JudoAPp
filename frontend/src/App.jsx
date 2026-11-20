@@ -1,15 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Login from "./Login.jsx";
 import Dashboard from "./Dashboard.jsx";
 import Motor from "./Motor.jsx";
 import Tests from "./Tests.jsx";
 import Calendar from "./Calendar.jsx";
 import Recovery from "./Recovery.jsx";
-import { getSession, logout } from "./auth.js";
+import { getCurrentUser, logout } from "./auth.js";
 
 export default function App() {
-  const [user, setUser] = useState(getSession);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState("home");
+
+  // Przy starcie sprawdzamy, czy w przeglądarce jest już zapisana sesja logowania.
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentUser()
+      .then((u) => {
+        if (!cancelled) setUser(u);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) return <p className="loading">Ładowanie…</p>;
 
   if (!user) {
     return (
@@ -49,14 +68,14 @@ export default function App() {
         </nav>
         <div className="who">
           <span>{user.firstName} {user.lastName}</span>
-          <button className="btn ghost small" onClick={() => { logout(); setUser(null); setView("home"); }}>
+          <button className="btn ghost small" onClick={async () => { await logout(); setUser(null); setView("home"); }}>
             Wyloguj się
           </button>
         </div>
       </header>
       <main className="content">
         {view === "home" && <Dashboard user={user} onNavigate={setView} />}
-        {view === "motor" && <Motor user={user} />}
+        {view === "motor" && <Motor />}
         {view === "tests" && <Tests user={user} />}
         {view === "calendar" && <Calendar user={user} />}
         {view === "recovery" && <Recovery user={user} />}

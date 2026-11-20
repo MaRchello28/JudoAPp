@@ -1,25 +1,6 @@
-// Plany treningowe zapisane w localStorage, osobno dla każdego użytkownika.
-// Docelowo ten plik zamienimy na zapytania do backendu.
+// Plany treningowe: stałe, nowy plan, kopia i obliczenia. Zapis do bazy jest w plansApi.js.
 export const MAX_SERIES = 8;
 export const MAX_EXERCISES = 15;
-
-const key = (email) => `ippon:plans:${email}`;
-
-function read(email) {
-  try {
-    return JSON.parse(localStorage.getItem(key(email))) || [];
-  } catch {
-    return [];
-  }
-}
-function write(email, plans) {
-  try {
-    localStorage.setItem(key(email), JSON.stringify(plans));
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export const todayLocal = () => {
   const d = new Date();
@@ -49,24 +30,6 @@ const num = (v) => {
 export const rowTonnage = (row) => row.sets.reduce((sum, s) => sum + num(s.reps) * num(s.weight), 0);
 export const planTonnage = (plan) => plan.rows.reduce((sum, r) => sum + rowTonnage(r), 0);
 export const formatKg = (n) => n.toLocaleString("pl-PL", { maximumFractionDigits: 2 });
-
-export function getPlans(email) {
-  return read(email);
-}
-
-export function savePlan(email, plan) {
-  const plans = read(email);
-  const saved = { ...plan, id: plan.id || String(Date.now()) };
-  const i = plans.findIndex((p) => p.id === saved.id);
-  if (i >= 0) plans[i] = saved;
-  else plans.unshift(saved);
-  if (!write(email, plans)) throw new Error("Nie można zapisać planu w tej przeglądarce.");
-  return saved;
-}
-
-export function deletePlan(email, id) {
-  write(email, read(email).filter((p) => p.id !== id));
-}
 
 export const formatDate = (d) => (d ? d.split("-").reverse().join(".") : "–");
 

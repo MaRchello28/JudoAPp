@@ -48,6 +48,7 @@ export const EXERCISES = [
       "Dynamiczny dociąg z ziemi",
       "Rwanie sztangi",
       "Podrzut sztangi",
+      "Zarzut siłowy (power clean)",
       "Rzuty piłką lekarską",
     ],
   },

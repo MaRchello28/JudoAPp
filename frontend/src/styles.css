@@ -271,3 +271,6 @@ textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
   .recwrap { grid-template-columns: 1fr; }
   .recwrap aside { order: -1; }
 }
+
+.loading { padding: 40px; text-align: center; color: var(--muted); }
+.info { margin: 12px 0 0; padding: 8px 10px; border-left: 4px solid var(--blue); background: var(--paper); font-size: 14px; }

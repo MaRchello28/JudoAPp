@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { EXERCISES } from "./exercises.js";
 import { exerciseHistory, formatDate } from "./plans.js";
 
-export default function Compare({ plans }) {
+export default function Compare({ plans, groups }) {
   const [exercise, setExercise] = useState("");
   const history = exercise ? exerciseHistory(plans, exercise, 3) : [];
 
@@ -12,7 +11,7 @@ export default function Compare({ plans }) {
       <label htmlFor="cmpExercise">Ćwiczenie</label>
       <select id="cmpExercise" value={exercise} onChange={(e) => setExercise(e.target.value)}>
         <option value="">Wybierz ćwiczenie</option>
-        {EXERCISES.map((g) => (
+        {groups.map((g) => (
           <optgroup key={g.group} label={g.group}>
             {g.items.map((name) => (
               <option key={name} value={name}>{name}</option>

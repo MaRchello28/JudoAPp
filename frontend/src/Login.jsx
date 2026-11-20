@@ -14,6 +14,8 @@ export default function Login({ onSuccess }) {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
   const isReg = mode === "reg";
 
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value });
@@ -21,6 +23,7 @@ export default function Login({ onSuccess }) {
   const switchMode = (m) => {
     setMode(m);
     setError("");
+    setInfo("");
   };
 
   async function handleSubmit(e) {
@@ -41,19 +44,29 @@ export default function Login({ onSuccess }) {
     if (form.password.length < 8) return setError("Hasło musi mieć co najmniej 8 znaków.");
     if (isReg && form.password !== form.confirmPassword) return setError("Hasła nie są takie same.");
 
+    setBusy(true);
     try {
-      const user = isReg
-        ? await register({
-            email,
-            firstName,
-            lastName,
-            birthDate: form.birthDate,
-            password: form.password,
-          })
-        : await login({ email, password: form.password });
-      onSuccess(user);
+      if (isReg) {
+        const res = await register({
+          email,
+          firstName,
+          lastName,
+          birthDate: form.birthDate,
+          password: form.password,
+        });
+        if (res.needsConfirmation) {
+          setMode("login");
+          setInfo("Konto utworzone. Kliknij link potwierdzający w e-mailu, a potem się zaloguj.");
+          return;
+        }
+        onSuccess(res.user);
+      } else {
+        onSuccess(await login({ email, password: form.password }));
+      }
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -119,9 +132,10 @@ export default function Login({ onSuccess }) {
           </>
         )}
         <p className="err" role="alert">{error}</p>
-        <button className="btn" type="submit">{isReg ? "Załóż konto" : "Zaloguj się"}</button>
+        {info && <p className="info" role="status">{info}</p>}
+        <button className="btn" type="submit" disabled={busy}>{busy ? "Chwileczkę…" : isReg ? "Załóż konto" : "Zaloguj się"}</button>
       </form>
-      <p className="note">To wersja demonstracyjna: konta są zapisane tylko w tej przeglądarce.</p>
+      <p className="note">Konto i plany treningowe są zapisane w bazie danych.</p>
     </div>
   );
 }
